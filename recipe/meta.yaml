@@ -14,7 +14,8 @@ build:
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
   entry_points:
     - camelot = camelot.cli:cli
-  skip: true  # [py<39]
+  # No opencv-python-headless for py313+ because of setuptools <70
+  skip: true  # [py<39 or py>312]
 
 requirements:
   host:
@@ -29,7 +30,7 @@ requirements:
     - numpy >=1.24.4  # [py<312]
     - numpy >=1.26.1  # [py>=312]
     - openpyxl >=3.1.0
-    - pdfminer-six >=20240706
+    - pdfminer.six >=20240706
     - pypdf >=3.17,<4.0  # [py<312]
     - pypdf >=4.0,<6.0  # [py>=312]
     - pandas >=1.5.3  # [py<310]
