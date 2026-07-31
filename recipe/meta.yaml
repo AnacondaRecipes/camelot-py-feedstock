@@ -15,7 +15,8 @@ build:
   entry_points:
     - camelot = camelot.cli:cli
   # No opencv-python-headless for py313+ because of setuptools <70
-  skip: true  # [py<39 or py>312]
+  # No pypdf >=3.17,<4.0 for py<312 in the main channel
+  skip: true  # [py!=312]
 
 requirements:
   host:
