@@ -1,22 +1,22 @@
 {% set name = "camelot-py" %}
-{% set version = "1.0.0" %}
+{% set version = "2.0.0" %}
 
 package:
   name: {{ name }}
   version: {{ version }}
 
 source:
-  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name.replace('-', '_')}}-{{ version }}.tar.gz
-  sha256: 62514bd9effaef39a34c850f4b09705a817be160483b028cc8cde14954721466
+  # GitHub tag archive (not the PyPI sdist) so the tests/ and bench/ dirs are
+  # available for the test section below.
+  url: https://github.com/{{ name.split('-')[0] }}-dev/{{ name.split('-')[0] }}/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: 61ce83f28fee8576b53ce28f9b00bdfda02bcb3b159a4294fb5e3e5d5295b17f
 
 build:
   number: 0
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
   entry_points:
     - camelot = camelot.cli:cli
-  # No opencv-python-headless for py313+ because of setuptools <70
-  # No pypdf >=3.17,<4.0 for py<312 in the main channel
-  skip: true  # [py!=312]
+  skip: true  # [py<310]
 
 requirements:
   host:
@@ -27,31 +27,51 @@ requirements:
   run:
     - python
     - click >=8.0.1
-    - chardet >=5.1.0
-    - numpy >=1.24.4  # [py<312]
-    - numpy >=1.26.1  # [py>=312]
+    - numpy >=1.26.1
     - openpyxl >=3.1.0
-    - pdfminer.six >=20240706
-    - pypdf >=3.17,<4.0  # [py<312]
-    - pypdf >=4.0,<6.0  # [py>=312]
-    - pandas >=1.5.3  # [py<310]
-    - pandas >=2.2.2  # [py>=310]
+    - pandas >=2.2.2
     - tabulate >=0.9.0
     - typing-extensions >=4.12.2  # [py<311]
-    - opencv-python-headless >=4.7.0.68
+    # conda's `opencv` bundles the python bindings; intentionally NOT constrained to
+    # the headless build so it can co-install with packages that need the qt variant
+    # (users pick headless via a build string at install time). Per cbouss review.
+    - opencv >=4.7.0
     - pypdfium2 >=4
+    - pillow >=10.4.0
+    - playa-pdf >=0.8.1
   run_constrained:
     # plot
-    - matplotlib >=3.7.5  # [py<312]
-    - matplotlib >=3.8.0  # [py>=312]
+    - matplotlib-base >=3.7.5  # [py<312]
+    - matplotlib-base >=3.8.0  # [py>=312]
     # ghostscript
-    - ghostscript>=0.7
+    - ghostscript >=0.7
 
+# E   error: Ghostscript is not installed. The ghostscript >=0.7 pkg is not in the main channel.
+{% set tests_to_deselect = " --deselect=tests/test_common.py::test_repr_ghostscript" %}
+{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_repr_ghostscript_custom_backend" %}
+{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_url_ghostscript" %}
+{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_url_ghostscript_custom_backend" %}
+{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_pages_ghostscript" %}
+{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_pages_ghostscript_custom_backend" %}
+# >   raise HTTPError(req.full_url, code, msg, hdrs, fp)
+# E   urllib.error.HTTPError: HTTP Error 429: Too Many Requests
+{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_url_pdfium" %}
+{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_pages_pdfium" %}
 test:
+  source_files:
+    - tests
+    - bench/comparison.py
   imports:
     - camelot
   commands:
+    - pip check
     - camelot --help
+    - python -m pytest -v tests {{ tests_to_deselect }}
+  requires:
+    - pip
+    - pytest
+    - matplotlib-base >=3.7.5  # [py<312]
+    - matplotlib-base >=3.8.0  # [py>=312]
 
 about:
   home: https://github.com/camelot-dev/camelot
@@ -59,7 +79,10 @@ about:
   license_file: LICENSE
   license_family: MIT
   summary: PDF Table Extraction for Humans.
-  description: PDF Table Extraction for Humans.
+  description: |
+    Camelot is a Python library that can help you extract tables from PDFs. It
+    gives you control over the table extraction process with tweakable settings,
+    and works best on text-based (not scanned) PDFs.
   dev_url: https://github.com/camelot-dev/camelot
   doc_url: https://camelot-py.readthedocs.io
 
