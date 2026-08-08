@@ -6,17 +6,20 @@ package:
   version: {{ version }}
 
 source:
-  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name.replace('-', '_')}}-{{ version }}.tar.gz
-  sha256: 62514bd9effaef39a34c850f4b09705a817be160483b028cc8cde14954721466
+  # GitHub tag archive (not the PyPI sdist) so the tests/ dir is available for the
+  # test section below.
+  url: https://github.com/{{ name.split('-')[0] }}-dev/{{ name.split('-')[0] }}/archive/refs/tags/v{{ version }}.tar.gz
+  sha256: 1a9e0b36d0dea28aab6aae4cf21da8f82ab612abfa585efab3b60ab30b243ed6
 
 build:
   number: 0
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
   entry_points:
     - camelot = camelot.cli:cli
-  # No opencv-python-headless for py313+ because of setuptools <70
-  # No pypdf >=3.17,<4.0 for py<312 in the main channel
-  skip: true  # [py!=312]
+  # upstream requires-python is >=3.9, but py<312 needs pypdf >=3.17,<4.0 which is
+  # not on pkgs/main (only pypdf 4.x+). py312-314 use pypdf >=4.0,<6.0 (available),
+  # so build those.
+  skip: true  # [py<312]
 
 requirements:
   host:
@@ -38,20 +41,40 @@ requirements:
     - pandas >=2.2.2  # [py>=310]
     - tabulate >=0.9.0
     - typing-extensions >=4.12.2  # [py<311]
-    - opencv-python-headless >=4.7.0.68
+    # conda's `opencv` bundles the python bindings; intentionally NOT constrained to
+    # the headless build so it can co-install with packages that need the qt variant
+    # (users pick headless via a build string at install time). Per cbouss review.
+    - opencv >=4.7.0
     - pypdfium2 >=4
   run_constrained:
     # plot
-    - matplotlib >=3.7.5  # [py<312]
-    - matplotlib >=3.8.0  # [py>=312]
+    - matplotlib-base >=3.7.5  # [py<312]
+    - matplotlib-base >=3.8.0  # [py>=312]
     # ghostscript
-    - ghostscript>=0.7
+    - ghostscript >=0.7
 
+# >   raise HTTPError(req.full_url, code, msg, hdrs, fp)
+# E   urllib.error.HTTPError: HTTP Error 429: Too Many Requests
+{% set deselect_tests = " --deselect=tests/test_common.py::test_repr_ghostscript" %}
+{% set deselect_tests = deselect_tests + " --deselect=tests/test_common.py::test_url" %}
+{% set deselect_tests = deselect_tests + " --deselect=tests/test_common.py::test_pages" %}
+# >   assert str(e.value) == "No tables found in table area (0, 0, 792, 612)"
+# E   AssertionError: assert 'No tables fo...792.0, 612.0)' == 'No tables fo... 0, 792, 612)'
+{% set deselect_tests = deselect_tests + " --deselect=tests/test_errors.py::test_stream_no_tables_in_area" %}
 test:
+  source_files:
+    - tests
   imports:
     - camelot
   commands:
+    - pip check
     - camelot --help
+    - python -m pytest -v tests {{ deselect_tests }}
+  requires:
+    - pip
+    - pytest
+    - matplotlib-base >=3.7.5  # [py<312]
+    - matplotlib-base >=3.8.0  # [py>=312]
 
 about:
   home: https://github.com/camelot-dev/camelot
@@ -59,7 +82,10 @@ about:
   license_file: LICENSE
   license_family: MIT
   summary: PDF Table Extraction for Humans.
-  description: PDF Table Extraction for Humans.
+  description: |
+    Camelot is a Python library that can help you extract tables from PDFs. It
+    gives you control over the table extraction process with tweakable settings,
+    and works best on text-based (not scanned) PDFs.
   dev_url: https://github.com/camelot-dev/camelot
   doc_url: https://camelot-py.readthedocs.io
 
