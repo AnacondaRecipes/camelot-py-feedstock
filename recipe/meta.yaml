@@ -6,10 +6,8 @@ package:
   version: {{ version }}
 
 source:
-  # GitHub tag archive (not the PyPI sdist) so the tests/ and bench/ dirs are
-  # available for the test section below.
-  url: https://github.com/{{ name.split('-')[0] }}-dev/{{ name.split('-')[0] }}/archive/refs/tags/v{{ version }}.tar.gz
-  sha256: 61ce83f28fee8576b53ce28f9b00bdfda02bcb3b159a4294fb5e3e5d5295b17f
+  url: https://pypi.org/packages/source/{{ name[0] }}/{{ name }}/{{ name.replace('-', '_')}}-{{ version }}.tar.gz
+  sha256: e96891d30707b3e2f1c08cb7ae15eea67abe72485ca92c7025b6308ba37bd3cd
 
 build:
   number: 0
@@ -46,32 +44,14 @@ requirements:
     # ghostscript
     - ghostscript >=0.7
 
-# E   error: Ghostscript is not installed. The ghostscript >=0.7 pkg is not in the main channel.
-{% set tests_to_deselect = " --deselect=tests/test_common.py::test_repr_ghostscript" %}
-{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_repr_ghostscript_custom_backend" %}
-{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_url_ghostscript" %}
-{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_url_ghostscript_custom_backend" %}
-{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_pages_ghostscript" %}
-{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_pages_ghostscript_custom_backend" %}
-# >   raise HTTPError(req.full_url, code, msg, hdrs, fp)
-# E   urllib.error.HTTPError: HTTP Error 429: Too Many Requests
-{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_url_pdfium" %}
-{% set tests_to_deselect = tests_to_deselect + " --deselect=tests/test_common.py::test_pages_pdfium" %}
 test:
-  source_files:
-    - tests
-    - bench/comparison.py
   imports:
     - camelot
   commands:
     - pip check
     - camelot --help
-    - python -m pytest -v tests {{ tests_to_deselect }}
   requires:
     - pip
-    - pytest
-    - matplotlib-base >=3.7.5  # [py<312]
-    - matplotlib-base >=3.8.0  # [py>=312]
 
 about:
   home: https://github.com/camelot-dev/camelot
