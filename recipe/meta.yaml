@@ -10,7 +10,7 @@ source:
   sha256: e96891d30707b3e2f1c08cb7ae15eea67abe72485ca92c7025b6308ba37bd3cd
 
 build:
-  number: 0
+  number: 1
   script: {{ PYTHON }} -m pip install . --no-deps --no-build-isolation -vv
   entry_points:
     - camelot = camelot.cli:cli
